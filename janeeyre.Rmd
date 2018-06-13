@@ -9,7 +9,7 @@ output: html_document
 
 Two years ago Julia Silge posted [an analysis](https://juliasilge.com/blog/you-must-allow-me/) combining natural language processing and Jane Austen. I was thrilled with the idea of analyzing my own favorite pieces of literature, but time got away from me (grad school does that). So here we are, two years later, following Julia's steps to analyze...*Jane Eyre!*
 
-Jane Eyre is in the `novels` dataset found in the `stylo` package.
+*Jane Eyre* is in the `novels` dataset found in the `stylo` package.
 
 ```{r}
 library(stylo)
@@ -18,12 +18,11 @@ janeeyre_text <- novels$CBronte_Jane
 remove(novels)
 ```
 
-The text is already divided into paragraphs. To make the rest of the analysis easier, I identified the chapter for each paragraph and removed the title/chapter headings. Jane Eyre has a total of 38 chapters.
+The text is already divided into paragraphs. To make the rest of the analysis easier, I identified the chapter for each paragraph and removed the title/chapter headings. *Jane Eyre* has a total of 38 chapters.
 
 ```{r}
 # where are the chapters?
 chapters_index <- which(startsWith(janeeyre_text, "CHAPTER"))
-
 jane <- data.frame("chapter" = rep(NA, 4021), "text" = rep(NA, 4021))
 row <- 0
 current_chapter <- 0
@@ -41,16 +40,16 @@ for(i in 3:length(janeeyre_text)){
 remove(janeeyre_text)
 ```
 
-To analyze the emotions in Jane Eyre I took advantage of the [NRC sentiment dictionary](http://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm) which is implemented in the `syuzhet` package. The author of `syuzhet` has [a blog](http://www.matthewjockers.net/2015/02/02/syuzhet/) which is very helpful for understanding what the package is capabale of.
+To analyze the emotions in *Jane Eyre* I took advantage of the [NRC sentiment dictionary](http://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm) which is implemented in the `syuzhet` package. The author of `syuzhet` has [a blog](http://www.matthewjockers.net/2015/02/02/syuzhet/) which is very helpful for understanding what the package is capable of.
 
-The `get_nrc_sentiment` function uses the NRC sentiment dictionary to count occurances of 8 different emotions and two sentiments (positive/negative) within the text. Here is an example using the opening line of the book.
+The `get_nrc_sentiment` function uses the NRC sentiment dictionary to count occurrences of 8 different emotions and two sentiments (positive/negative) within the text. Here is an example using the opening line of the book.
 
 ```{r}
 library(syuzhet)
 get_nrc_sentiment("There was no possibility of taking a walk that day.")
 ```
 
-Hmm, not a lot of emotion. Let's try another line from the the middle of the book.
+Hmm, not a lot of emotion. Let's try another line from the middle of the book.
 
 ```{r}
 get_nrc_sentiment("Do you think, because I am poor, obscure, plain, and little, I am soulless and heartless? You think wrong!")
@@ -58,35 +57,35 @@ get_nrc_sentiment("Do you think, because I am poor, obscure, plain, and little, 
 
 There we go! Poor Jane thinks Mr. Rochester is getting married and she's getting shipped off to Ireland because nobody wants her.
 
-Julia makes a great point that these modern tools might not be appropriate for analyzing a text that is over 100 years old. Jane Eyre may also prove challenging because the main characters flirt like this:
+In her blog post Julia makes a great point that these modern tools might not be appropriate for analyzing a text over 100 years old. *Jane Eyre* may also prove challenging because the main characters flirt like this:
 
 >"Am I hideous, Jane?""
 
 >"Very, sir: you always were, you know.""
 
-IM YOU WE WERE US THEY
+Nothing that screams "romance" and "joy". 
 
-Nevertheless, Jane is one of the most emotional characters I've ever encountered and I'm excited to see what we find! Now let's get the sentiment scores for each paragrph.
+Nevertheless, Jane is one of the most emotional characters I've ever encountered and I'm excited to see how much plot detail we can pick up. Now let's get the sentiment scores for each paragrph.
 
 ```{r}
 jane_nrc <- cbind("chapter" = jane[,1], "paragraph" = 1:nrow(jane), get_nrc_sentiment(jane[,2]))
 jane_nrc$negative <- -jane_nrc$negative
 ```
 
-Now we reshape the data and plot positive/negative scores for each paragraph.
+After reshaping the data, I can plot the positive and negative scores for each paragraph. (Many thanks to Julia for sharing her code! I have yet to master ggplot and love the way these plots look.)
 
 ```{r}
 library(dplyr)
 library(reshape2)
+library(ggplot)
+
 posneg <- jane_nrc %>% select(paragraph, chapter, positive, negative) %>% melt(id = c("paragraph", "chapter"))
 names(posneg) <- c("paragraph", "chapter", "sentiment", "value")
 
 
 annotatetext <- data.frame(x = c(651, 1209, 2245, 2569, 3584, 3768), 
                            y = c(20.3, 23.3, 20.3, 24.3, 20.3, 18.3), 
-                           label = c("Helen dies", "Bedroom fire", 
-                                     "Kiss", "Wedding", 
-                                     "St. John", "Reunited"))
+                           label = c("Helen dies", "Bedroom fire", "Kiss", "Wedding", "St. John", "Reunited"))
 annotatearrow <- data.frame(x = c(651, 1209, 2245, 2569, 3584, 3768), 
                             y1 = c(19,22,19,23,19,17), 
                             y2 = c(12.1, 14.3, 11.4, 14.1, 11.2, 10.5))
@@ -109,11 +108,13 @@ ggplot(data = posneg, aes(x=paragraph, y=value, color=sentiment, fill=sentiment)
   scale_color_manual(values = c("goldenrod2", "dodgerblue4"))
 ```
 
-*This is so cool.* The first thing I noticed was the heavy negatives after "wedding" when Jane's Wedding is broken off (because her fiance literally has a crazy wife in the attic) and she runs away, gets lost, and almost starves to death.
+*This is so cool.* I wish my high school English teacher could see me now.
+
+The first thing I noticed were the dense negative scores after the "Wedding" mark. This is when Jane's Wedding is broken off (because her fiance literally has a crazy wife in the attic) and she runs away, gets lost, and almost starves to death.
 
 It's a good book, I promise.
 
-How does our understanding of the plot change when we look at overall (happy + sad) sentiment? 
+How does our understanding of the plot change when we look at overall (happy + sad) sentiment?
 
 ```{r}
 posneg$overall <- jane_nrc$positive + jane_nrc$negative
