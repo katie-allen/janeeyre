@@ -5,26 +5,20 @@ date: "May 22, 2018"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## R Markdown
-
-### A clever title
+## Jane Eyre Text Analysis
 
 Two years ago Julia Silge posted [an analysis](https://juliasilge.com/blog/you-must-allow-me/) combining natural language processing and Jane Austen. I was thrilled with the idea of analyzing my own favorite pieces of literature, but time got away from me (grad school does that). So here we are, two years later, following Julia's steps to analyze...*Jane Eyre!*
 
 Jane Eyre is in the `novels` dataset found in the `stylo` package.
 
-```{r, include=FALSE}
+```{r}
 library(stylo)
 data(novels)
 janeeyre_text <- novels$CBronte_Jane
 remove(novels)
 ```
 
-The text is divded into paragaphs. To make the rest of the analysis easier, I identified the chapter for each paragraph and removed the title/chapter headings. Jane Eyre has 38 chapters total.
+The text is already divided into paragraphs. To make the rest of the analysis easier, I identified the chapter for each paragraph and removed the title/chapter headings. Jane Eyre has a total of 38 chapters.
 
 ```{r}
 # where are the chapters?
