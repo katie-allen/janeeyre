@@ -7,7 +7,7 @@ output: html_document
 
 ## Jane Eyre Text Analysis
 
-Two years ago Julia Silge posted [an analysis](https://juliasilge.com/blog/you-must-allow-me/) combining natural language processing and Jane Austen. I was thrilled with the idea of analyzing my own favorite pieces of literature, but time got away from me (grad school does that). So here we are, two years later, following Julia's steps to analyze...*Jane Eyre!*
+Two years ago Julia Silge posted [an analysis](https://juliasilge.com/blog/you-must-allow-me/) combining natural language processing and Jane Austen. I was thrilled with the idea of analyzing my own favorite pieces of literature, but time got away from me. (Grad school does that.) So here we are, two years later, following Julia's steps to analyze...*Jane Eyre!*
 
 *Jane Eyre* is in the `novels` dataset found in the `stylo` package.
 
@@ -42,7 +42,7 @@ remove(janeeyre_text)
 
 ### "Do you think I am an automaton? A machine without feelings?"
 
-To analyze the emotions in *Jane Eyre* I took advantage of the [NRC sentiment dictionary](http://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm) which is implemented in the `syuzhet` package. The author of `syuzhet` has [a blog](http://www.matthewjockers.net/2015/02/02/syuzhet/) which is very helpful for understanding what the package is capable of.
+To analyze the emotions in *Jane Eyre* I took advantage of the [NRC sentiment dictionary](http://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm) which is implemented in the `syuzhet` package. This package has great [documentation](https://cran.r-project.org/web/packages/syuzhet/vignettes/syuzhet-vignette.html) which is helpful for understanding what the package is capable of.
 
 The `get_nrc_sentiment` function uses the NRC sentiment dictionary to count occurrences of 8 different emotions and two sentiments (positive/negative) within the text. Here is an example using the opening line of the book.
 
@@ -80,10 +80,8 @@ After reshaping the data, we can plot the positive and negative scores for each 
 library(dplyr)
 library(reshape2)
 library(ggplot)
-
 posneg <- jane_nrc %>% select(paragraph, chapter, positive, negative) %>% melt(id = c("paragraph", "chapter"))
 names(posneg) <- c("paragraph", "chapter", "sentiment", "value")
-
 
 annotatetext <- data.frame(x = c(651, 1209, 2245, 2569, 3584, 3768), 
                            y = c(20.3, 23.3, 20.3, 24.3, 20.3, 18.3), 
@@ -91,12 +89,10 @@ annotatetext <- data.frame(x = c(651, 1209, 2245, 2569, 3584, 3768),
 annotatearrow <- data.frame(x = c(651, 1209, 2245, 2569, 3584, 3768), 
                             y1 = c(19,22,19,23,19,17), 
                             y2 = c(12.1, 14.3, 11.4, 14.1, 11.2, 10.5))
-
 ggplot(data = posneg, aes(x=paragraph, y=value, color=sentiment, fill=sentiment)) +
   geom_bar(stat = "identity", position = "dodge") + theme_minimal() +
   ylab("Sentiment") +
-  ggtitle(expression(paste("Positive and Negative Sentiment in ", 
-                           italic("Jane Eyre")))) +
+  ggtitle(expression(paste("Positive and Negative Sentiment in ", italic("Jane Eyre")))) +
   theme(legend.title=element_blank()) +
   theme(axis.title.x=element_blank()) +
   theme(axis.ticks.x=element_blank()) +
@@ -140,14 +136,13 @@ ggplot(data = posneg,
 
 We see the same negative spikes after "Wedding", but I love the additional details that pop up. Jane is mostly happy during her time at Thornfield (between "Helen" and "Wedding") but the arrival of the rude, haughty Miss Ingram causes her some distress (between "Fire" and "Proposal"). The positive spikes before "St. John" show how much Jane loves her new independent life after leaving Thornfield.
 
-TO smooth out the sentiment spikes and look at the underlying plot structure, we can use a low-pass filter and the discrete cosine transformation implemented in the `syuzhet` package. Matthew Lockers, author of `syuzhet`, explains a bit more about this process in a [blog post](http://www.matthewjockers.net/2017/01/12/resurrecting/). 
+To smooth out the sentiment spikes and look at the underlying plot structure, we can use a low-pass filter and the discrete cosine transformation implemented in the `syuzhet` package. Matthew Lockers, author of `syuzhet`, explains a bit more about this process in a [blog post](http://www.matthewjockers.net/2017/01/12/resurrecting/). 
 
 You may ask, *"Katie, how did you know to use 8 on the low-pass filter?"* Great question. I tried everything from 2 to 10 and decided 8 looked the best and was the easiest to explain.
 
 ```{r}
 jane_dct <- as.numeric(get_dct_transform(jane_sentiment$sentiment, low_pass_size = 8, x_reverse_len = 100, scale_vals = T, scale_range = F))
 jane_dct <- data.frame(cbind(linenumber = 1:100, dct = jane_dct))
-
 ggplot(data = jane_dct, aes(x = linenumber, y = dct)) +
   geom_bar(stat = "identity", alpha = 0.8, color = "dodgerblue4", fill = "dodgerblue4") +
   theme_minimal() +
@@ -186,9 +181,12 @@ emotions <- jane_chap_nrc %>% select(chapter, anger, anticipation, disgust, fear
 names(emotions) <- c("chapter", "sentiment", "value")
 levels(emotions$sentiment) <- c("Anger", "Anticipation", "Disgust", "Fear", 
                                 "Joy", "Sadness", "Surprise", "Trust")
-
 emotions$sentiment = factor(emotions$sentiment,levels(emotions$sentiment)[c(5,8,2,7,6,3,4,1)])
+```
 
+Plotting emotions in a heatmap.
+
+```{r}
 library(viridis)
 ggplot(data = emotions, aes(x = chapter, y = sentiment, fill = value)) +
   geom_tile(color="white", size=0.1) +
@@ -221,7 +219,6 @@ for(i in 1:38){
   words[i] <- length(gregexpr(" ", ss)[[1]])
 }
 
-
 jane_chap_nrc2 <- jane_chap_nrc
 for(i in 1:nrow(jane_chap_nrc2)){
   jane_chap_nrc2[i,2:9] <- jane_chap_nrc2[i,2:9]/words[i]
@@ -230,7 +227,6 @@ emotions2 <- jane_chap_nrc2 %>% select(chapter, anger, anticipation, disgust, fe
 names(emotions2) <- c("chapter", "sentiment", "value")
 levels(emotions2$sentiment) <- c("Anger", "Anticipation", "Disgust", "Fear", "Joy", "Sadness", "Surprise", "Trust")
 emotions2$sentiment = factor(emotions2$sentiment,levels(emotions2$sentiment)[c(5,8,2,7,6,3,4,1)])
-
 ggplot(data = emotions2, aes(x = chapter, y = sentiment, fill = value)) +
   geom_tile(color="white", size=0.1) +
   scale_fill_viridis(name="Normalized Score") +
@@ -251,4 +247,6 @@ ggplot(data = emotions2, aes(x = chapter, y = sentiment, fill = value)) +
 
 ### "Reader, I married him."
 
-Finally, the happy ending comes shining through! The brightest emotion is now **trust** in the final chapter. The second strongest emotion is **fear** in Chapter 2, when 10-year-old Jane is locked in a haunted room and faints from sheer terror.  
+Finally, the happy ending comes shining through! The brightest emotion is now **trust** in the final chapter. Jane is given a fortune, reunited with Mr. Rochester, and surrounds herself with the people she loves. 
+
+The second strongest emotion is **fear** in Chapter 2, when 10-year-old Jane is locked in a haunted room and faints from sheer terror. It is interesting that, when accounting for word count, the emotions of this childhood event surpass any anger, fear, or sadness that Jane experiences for the rest of the novel. 
