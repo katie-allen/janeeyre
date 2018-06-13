@@ -124,8 +124,8 @@ ggplot(data = posneg,
 #---------  FILTER and TRANSFORMATION  --------------
 
 # discrete cosine transformation w/ low-pass filter
-jane_dct <- as.numeric(get_dct_transform(jane_sentiment$sentiment, 
-                                         low_pass_size = 8,
+jane_dct <- as.numeric(get_dct_transform(posneg$overall, 
+                                         low_pass_size = 6,
                                          x_reverse_len = 100,
                                          scale_vals = T,
                                          scale_range = F))
@@ -150,14 +150,12 @@ ggplot(data = jane_dct, aes(x = linenumber, y = dct)) +
   # reunited - 3768 = 0.93708
   annotate("text", size = 3, 
            x = c(16, 30, 56, 64, 89, 94), 
-           y = c(-0.4, -0.4, -0.55, 0.5, -0.55, 0.85), 
-           label = c("Helen", "Fire", "Kiss",
-                     "Wedding", "St. John", 
-                     "Reunited")) +
+           y = c(-0.4, 0.6, -0.4, -0.4, 0.6, -0.54), 
+           label = c("Helen", "Fire", "Kiss", "Wedding", "St. John",  "Reunited")) +
   annotate("segment", arrow = arrow(length = unit(0.03, "npc")),
            x = c(16, 30, 56, 64, 89, 94), xend = c(16, 30, 56, 64, 89, 94),
-           y = c(-0.36, -0.36, -0.51, 0.42, -0.51, 0.77), 
-           yend = c(-0.02, -0.02, -0.02 , 0.02, -0.02, 0.02))
+           y = c(-0.36, 0.52, -0.36, -0.36, 0.52, -0.50), 
+           yend = c(-0.02, 0.02, -0.02 , -0.02, 0.02, -0.02))
 
 
 #---------  EMOTION by CHAPTER  ---------------------

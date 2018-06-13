@@ -79,7 +79,7 @@ After reshaping the data, we can plot the positive and negative scores for each 
 ```{r}
 library(dplyr)
 library(reshape2)
-library(ggplot)
+library(ggplot2)
 posneg <- jane_nrc %>% select(paragraph, chapter, positive, negative) %>% melt(id = c("paragraph", "chapter"))
 names(posneg) <- c("paragraph", "chapter", "sentiment", "value")
 
@@ -138,10 +138,10 @@ We see the same negative spikes after "Wedding", but I love the additional detai
 
 To smooth out the sentiment spikes and look at the underlying plot structure, we can use a low-pass filter and the discrete cosine transformation implemented in the `syuzhet` package. Matthew Lockers, author of `syuzhet`, explains a bit more about this process in a [blog post](http://www.matthewjockers.net/2017/01/12/resurrecting/). 
 
-You may ask, *"Katie, how did you know to use 8 on the low-pass filter?"* Great question. I tried everything from 2 to 10 and decided 8 looked the best and was the easiest to explain.
+You may ask, *"Katie, how did you know to use 6 on the low-pass filter?"* Great question. I tried everything from 2 to 10 and decided 6 looked the best and was the easiest to explain.
 
 ```{r}
-jane_dct <- as.numeric(get_dct_transform(jane_sentiment$sentiment, low_pass_size = 8, x_reverse_len = 100, scale_vals = T, scale_range = F))
+jane_dct <- as.numeric(get_dct_transform(posneg$overall,  low_pass_size = 6, x_reverse_len = 100, scale_vals = T, scale_range = F))
 jane_dct <- data.frame(cbind(linenumber = 1:100, dct = jane_dct))
 ggplot(data = jane_dct, aes(x = linenumber, y = dct)) +
   geom_bar(stat = "identity", alpha = 0.8, color = "dodgerblue4", fill = "dodgerblue4") +
@@ -153,21 +153,19 @@ ggplot(data = jane_dct, aes(x = linenumber, y = dct)) +
   theme(axis.text.x=element_blank()) +
   annotate("text", size = 3, 
            x = c(16, 30, 56, 64, 89, 94), 
-           y = c(-0.4, -0.4, -0.55, 0.5, -0.55, 0.85), 
-           label = c("Helen", "Fire", "Proposal", "Wedding", "St. John", "Reunited")) +
+           y = c(-0.4, 0.6, -0.4, -0.4, 0.6, -0.54), 
+           label = c("Helen", "Fire", "Kiss", "Wedding", "St. John",  "Reunited")) +
   annotate("segment", arrow = arrow(length = unit(0.03, "npc")),
            x = c(16, 30, 56, 64, 89, 94), xend = c(16, 30, 56, 64, 89, 94),
-           y = c(-0.36, -0.36, -0.51, 0.42, -0.51, 0.77), 
-           yend = c(-0.02, -0.02, -0.02 , 0.02, -0.02, 0.02))
+           y = c(-0.36, 0.52, -0.36, -0.36, 0.52, -0.50), 
+           yend = c(-0.02, 0.02, -0.02 , -0.02, 0.02, -0.02))
 ```
 
-Beautiful! We can see Jane's horrible childhood, the happy early days at Thornfield, the complete despair when the wedding is broken off, and...a sad ending?
+Beautiful! We can see Jane's horrible childhood, the happy early days at Thornfield, and even the happy ending!
 
 ### Analysis by Chapter
 
-*Jane Eyre* does have a happy ending, but the tragic events immediately preceding the last few chapters (combined with behavior issues at edge points) show the book ending on a low note.
-
-Just for fun, let's look at the 8 NRC emotions by chapter and see if we can find the happily ever after.
+Just for fun, let's look at the 8 NRC emotions across chapters and see if that changes our understanding *Jane Eyre*'s plot.
 
 ```{r}
 jane_chapters <- data.frame("chapter"=1:38, "text"= rep("NA", 38))
@@ -179,8 +177,7 @@ for(i in 1:38){
 jane_chap_nrc <- cbind("chapter" = jane_chapters[,1], get_nrc_sentiment(jane_chapters[,2]))
 emotions <- jane_chap_nrc %>% select(chapter, anger, anticipation, disgust, fear, joy, sadness, surprise, trust) %>% melt(id = c("chapter"))
 names(emotions) <- c("chapter", "sentiment", "value")
-levels(emotions$sentiment) <- c("Anger", "Anticipation", "Disgust", "Fear", 
-                                "Joy", "Sadness", "Surprise", "Trust")
+levels(emotions$sentiment) <- c("Anger", "Anticipation", "Disgust", "Fear", "Joy", "Sadness", "Surprise", "Trust")
 emotions$sentiment = factor(emotions$sentiment,levels(emotions$sentiment)[c(5,8,2,7,6,3,4,1)])
 ```
 
@@ -206,11 +203,11 @@ ggplot(data = emotions, aes(x = chapter, y = sentiment, fill = value)) +
   theme(legend.key.width=unit(1, "cm"))
 ```
 
-The brightest spot is **fear** in Chapter 27. This the chapter after Jane's wedding is canceled and as we saw before, it is a low point in her story. She loses the love of her life, runs away from the only home she's ever known, and nearly starves to death.
+The brightest spot is **fear** in Chapter 27. This is the chapter after Jane's wedding is canceled, and as we saw before, it is a low point in her story. She loses the love of her life, runs away from the only home she's ever known, and nearly starves to death.
 
-Sounds about right.
+Besides a few bright spots, the heatmap looks rather dark and bland. This is not the passionate Jane I know! 
 
-Something to consider here is word count. Chapter 27 may have the strongest emotion, but it also has the most words at 11257! The final chapter has only 1817 words. What happens when we normalize the emotion scores?
+Something to consider here is word count. Chapter 27 may have the strongest emotion, but it also has the most words at 11257! The next highest count is 9262, and numbers quickly drop off after that. The final chapter (the one with the happy ending) has only 1817 words. It seems the fear in Chapter 27 is overpowering the rest of the emotions. What happens when we normalize the scores?
 
 ```{r}
 words <- rep(NA, 38)
@@ -245,8 +242,6 @@ ggplot(data = emotions2, aes(x = chapter, y = sentiment, fill = value)) +
   theme(legend.key.width=unit(1, "cm"))
 ```
 
-### "Reader, I married him."
+There's the happy ending! The brightest emotion is now **trust** in the final chapter. Jane is given a fortune, reunited with Mr. Rochester, and surrounds herself with the people she loves. 
 
-Finally, the happy ending comes shining through! The brightest emotion is now **trust** in the final chapter. Jane is given a fortune, reunited with Mr. Rochester, and surrounds herself with the people she loves. 
-
-The second strongest emotion is **fear** in Chapter 2, when 10-year-old Jane is locked in a haunted room and faints from sheer terror. It is interesting that, when accounting for word count, the emotions of this childhood event surpass any anger, fear, or sadness that Jane experiences for the rest of the novel. 
+The second strongest emotion is **fear** in Chapter 2, when 10-year-old Jane is locked in a haunted room and faints from sheer terror. It is interesting that after accounting for number of words the emotions of this childhood event surpass any anger, fear, or sadness that Jane experiences for the rest of the novel. 
