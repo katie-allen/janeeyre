@@ -21,18 +21,18 @@ length(chapters_index)
 chapters_index
 
 # save chapter and paragraph text into dataframe
-jane <- data.frame("chapter" = rep(NA, 4021), "text" = rep(NA, 4021))
+# remove the title and chapter headings
+jane <- data.frame("chapter" = rep(NA, 4021), "paragraph" = 1:4021, 
+                   "text" = rep(NA, 4021))
 row <- 0
 current_chapter <- 0
-
-# remove the title and chapter headings
 for(i in 3:length(janeeyre_text)){
   if(i %in% chapters_index){
     current_chapter <- current_chapter + 1
   } else {
     row <- row + 1
-    jane[row, 1] <- current_chapter
-    jane[row, 2] <- janeeyre_text[i]
+    jane[row, "chapter"] <- current_chapter
+    jane[row, "text"] <- janeeyre_text[i]
   }
 }
 remove(janeeyre_text)
@@ -48,29 +48,31 @@ library(syuzhet)
 
 # try it on a few sentences
 get_nrc_sentiment("There was no possibility of taking a walk that day.")
-get_nrc_sentiment("Do you think, because I am poor, obscure, plain, and little, I am soulless and heartless? You think wrong!")
+get_nrc_sentiment("Do you think, because I am poor, obscure, plain, and little,
+                  I am soulless and heartless? You think wrong!")
 get_nrc_sentiment("Reader, I married him.")
 
-# do it for every paragraph
-jane_nrc <- cbind("chapter" = jane[,1], "paragraph" = 1:nrow(jane), get_nrc_sentiment(jane[,2]))
-jane_nrc$negative <- -jane_nrc$negative
+library(reshape2)
+library(dplyr)
+
+# for every paragraph, get the positive and negative
+jane <- cbind(jane, get_nrc_sentiment(jane[,"text"])[9:10])
+jane$negative <- -jane$negative
+jane_pn <- jane %>% select(paragraph, chapter, positive, negative) %>% 
+  melt(id = c("paragraph", "chapter"))
+
+head(jane)
+head(jane_pn)
 
 
 #---------  PLOT POSITIVE/NEGATIVE  -----------------
 
-library(dplyr)
-library(reshape2)
 library(ggplot2)
-
-# reshape (following Julia's code)
-posneg <- jane_nrc %>% select(paragraph, chapter, positive, negative) %>% 
-  melt(id = c("paragraph", "chapter"))
-names(posneg) <- c("paragraph", "chapter", "sentiment", "value")
 
 # brute force - find interesting parts of the novel
 which(startsWith(jane[,2], "When I awoke")) # helen dies - 651
 which(startsWith(jane[,2], "Something creaked")) # room on fire - 1209
-which(startsWith(jane[,2], "But what had befallen")) # kiss under the tree - 2245
+which(startsWith(jane[,2], "But what had befallen")) # proposal - 2245
 which(startsWith(jane[,2], "The clergyman looked up")) # wedding is stopped - 2569
 which(startsWith(jane[,2], "His lips and cheeks turned white")) # st john proposes - 3584
 which(startsWith(jane[,2], "He put out his hand with a quick gesture")) # reunited - 3768
@@ -78,16 +80,19 @@ which(startsWith(jane[,2], "He put out his hand with a quick gesture")) # reunit
 # markers, so we can follow the story line
 annotatetext <- data.frame(x = c(651, 1209, 2245, 2569, 3584, 3768), 
                            y = c(20.3, 23.3, 20.3, 24.3, 20.3, 18.3), 
-                           label = c("Helen", "Fire", "Proposal", "Wedding", "St. John", "Reunited"))
+                           label = c("Helen", "Fire", "Proposal", "Wedding",
+                                     "St. John", "Reunited"))
 annotatearrow <- data.frame(x = c(651, 1209, 2245, 2569, 3584, 3768), 
                             y1 = c(19,22,19,23,19,17), 
                             y2 = c(12.1, 14.3, 11.4, 14.1, 11.2, 10.5))
 
 # plot the positive and negative sentiment!
-ggplot(data = posneg, aes(x=paragraph, y=value, color=sentiment, fill=sentiment)) +
+ggplot(data = jane_pn, 
+       aes(x=paragraph, y=value, color=variable, fill=variable)) +
   geom_bar(stat = "identity", position = "dodge") + theme_minimal() +
   ylab("Sentiment") +
-  ggtitle(expression(paste("Positive and Negative Sentiment in ", italic("Jane Eyre")))) +
+  ggtitle(expression(paste("Positive and Negative Sentiment in ", 
+                           italic("Jane Eyre")))) +
   theme(legend.title=element_blank()) +
   theme(axis.title.x=element_blank()) +
   theme(axis.ticks.x=element_blank()) +
@@ -104,8 +109,8 @@ ggplot(data = posneg, aes(x=paragraph, y=value, color=sentiment, fill=sentiment)
 #---------  PLOT OVERALL SENTIMENT  -----------------
 
 # happy - sad = overall
-posneg$overall <- jane_nrc$positive + jane_nrc$negative
-ggplot(data = posneg, 
+jane$overall <- jane$positive + jane$negative
+ggplot(data = jane, 
        aes(x = paragraph, y = overall)) +
   geom_bar(stat = "identity", position = "dodge", color = "dodgerblue4") + 
   theme_minimal() +
@@ -124,11 +129,8 @@ ggplot(data = posneg,
 #---------  FILTER and TRANSFORMATION  --------------
 
 # discrete cosine transformation w/ low-pass filter
-jane_dct <- as.numeric(get_dct_transform(posneg$overall, 
-                                         low_pass_size = 6,
-                                         x_reverse_len = 100,
-                                         scale_vals = T,
-                                         scale_range = F))
+jane_dct <- as.numeric(get_dct_transform(jane$overall, low_pass_size = 6,
+                  x_reverse_len = 100, scale_vals = T, scale_range = F))
 jane_dct <- data.frame(cbind(linenumber = 1:100, dct = jane_dct))
 #jane_ft <- as.numeric(get_transformed_values(jane_sentiment$sentiment, low_pass_size = 6, scale_vals = TRUE, scale_range = FALSE))
 #jane_ft <- data.frame(cbind(linenumber = 1:100, ft = jane_ft))
@@ -166,18 +168,20 @@ jane_chapters <- data.frame("chapter"=1:38,
 jane_chapters$text <- as.character(jane_chapters$text)
 for(i in 1:38){
   index <- which(jane$chapter == i)
-  jane_chapters[i,2] <- paste(jane[index,2], sep = '', collapse = '')
+  jane_chapters[i,2] <- paste(jane[index,"text"], sep = '', collapse = '')
 }
   
 
 # get emotions for each chapter
-jane_chap_nrc <- cbind("chapter" = jane_chapters[,1], get_nrc_sentiment(jane_chapters[,2]))
-jane_chap_nrc
-emotions <- jane_chap_nrc %>% select(chapter, anger, anticipation, disgust, fear, joy, sadness, surprise, trust) %>% melt(id = c("chapter"))
+jane_chapters <- cbind(jane_chapters, get_nrc_sentiment(jane_chapters[,2]))
+jane_chapters[1,]
+emotions <- jane_chapters %>% select(chapter, anger, anticipation, disgust, 
+              fear, joy, sadness, surprise, trust) %>% melt(id = c("chapter"))
 names(emotions) <- c("chapter", "sentiment", "value")
 levels(emotions$sentiment) <- c("Anger", "Anticipation", "Disgust", "Fear", 
                                 "Joy", "Sadness", "Surprise", "Trust")
-emotions$sentiment = factor(emotions$sentiment,levels(emotions$sentiment)[c(5,8,2,7,6,3,4,1)])
+emotions$sentiment <- factor(emotions$sentiment,
+                             levels(emotions$sentiment)[c(5,8,2,7,6,3,4,1)])
 
 # plot with a pretty heatmap
 library(viridis)
@@ -204,20 +208,21 @@ ggplot(data = emotions, aes(x = chapter, y = sentiment, fill = value)) +
 # count number of words
 words <- rep(NA, 38)
 for(i in 1:38){
-  ss <- gsub("[[:punct:]]", "", jane_chapters[i,2])
+  ss <- gsub("[[:punct:]]", "", jane_chapters[i,"text"])
   words[i] <- length(gregexpr(" ", ss)[[1]])
 }
 
 # recalculate emptions
-jane_chap_nrc2 <- jane_chap_nrc
-for(i in 1:nrow(jane_chap_nrc2)){
-  jane_chap_nrc2[i,2:9] <- jane_chap_nrc2[i,2:9]/words[i]
+jane_chap2 <- jane_chapters[,c(1,3:10)]
+for(i in 1:nrow(jane_chap2)){
+  jane_chap2[i,2:9] <- jane_chap2[i,2:9]/words[i]
 }
-emotions2 <- jane_chap_nrc2 %>% select(chapter, anger, anticipation, disgust, fear, joy, sadness, surprise, trust) %>% melt(id = c("chapter"))
+emotions2 <- jane_chap2 %>% melt(id = c("chapter"))
 names(emotions2) <- c("chapter", "sentiment", "value")
 levels(emotions2$sentiment) <- c("Anger", "Anticipation", "Disgust", "Fear", 
                                 "Joy", "Sadness", "Surprise", "Trust")
-emotions2$sentiment = factor(emotions2$sentiment,levels(emotions2$sentiment)[c(5,8,2,7,6,3,4,1)])
+emotions2$sentiment = factor(emotions2$sentiment,
+                             levels(emotions2$sentiment)[c(5,8,2,7,6,3,4,1)])
 
 # does it change?
 ggplot(data = emotions2, aes(x = chapter, y = sentiment, fill = value)) +
